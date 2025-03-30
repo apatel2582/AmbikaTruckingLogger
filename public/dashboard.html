@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ambika Trucking - Dashboard</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="dashboard-header">
+        <h1>Ambika Trucking - Checkpoint Log</h1>
+        <button id="logout-button">Logout</button>
+      </div>
+      <p class="welcome-message">
+        Welcome, <span id="username-display">Driver</span>!
+      </p>
+
+      <!-- Notification Area -->
+      <div id="notification-area" class="notification-container"></div>
+
+      <!-- Profile Section -->
+      <div id="profile-section">
+        <h2 id="profile-toggle" style="cursor: pointer">My Profile &#9662;</h2>
+        <div id="profile-form-content" style="display: none">
+          <div class="form-container">
+            <form id="profile-update-form">
+              <label for="profile-fullname">Full Name:</label>
+              <input type="text" id="profile-fullname" name="fullName" />
+              <label for="profile-contact">Contact Number:</label>
+              <input type="text" id="profile-contact" name="contactNumber" />
+              <p id="profile-update-error" class="error-message"></p>
+              <div class="loading-spinner" id="profile-update-spinner"></div>
+              <button type="submit" id="profile-update-button">
+                Update Profile Info
+              </button>
+            </form>
+          </div>
+          <hr />
+          <div class="form-container">
+            <h4>Change Username</h4>
+            <form id="username-change-form">
+              <label for="new-username">New Username:</label>
+              <input
+                type="text"
+                id="new-username"
+                name="newUsername"
+                required
+              />
+              <label for="current-password-for-username"
+                >Current Password (for verification):</label
+              >
+              <input
+                type="password"
+                id="current-password-for-username"
+                name="currentPassword"
+                required
+              />
+              <p id="username-change-error" class="error-message"></p>
+              <div class="loading-spinner" id="username-change-spinner"></div>
+              <button type="submit" id="username-change-button">
+                Change My Username
+              </button>
+            </form>
+          </div>
+          <hr />
+          <div class="form-container">
+            <h4>Change Password</h4>
+            <form id="password-change-form">
+              <label for="current-password">Current Password:</label>
+              <input
+                type="password"
+                id="current-password"
+                name="currentPassword"
+                required
+              />
+              <label for="new-password">New Password:</label>
+              <input
+                type="password"
+                id="new-password"
+                name="newPassword"
+                required
+              />
+              <label for="confirm-password">Confirm New Password:</label>
+              <input
+                type="password"
+                id="confirm-password"
+                name="confirmPassword"
+                required
+              />
+              <p id="password-change-error" class="error-message"></p>
+              <div class="loading-spinner" id="password-change-spinner"></div>
+              <button type="submit" id="password-change-button">
+                Change My Password
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- End Profile Section -->
+
+      <!-- Log Entry Section -->
+      <div class="form-container" id="log-entry-form">
+        <h2>New Log Entry</h2>
+        <form id="entry-form">
+          <label for="truck-number">Truck Number:</label>
+          <input type="text" id="truck-number" name="truckNumber" required />
+          <label for="driver-name">Driver Name:</label>
+          <input type="text" id="driver-name" name="driverName" required />
+          <label for="initial-weight">Initial Weight (Tonnes):</label>
+          <input
+            type="number"
+            step="0.01"
+            id="initial-weight"
+            name="initialWeight"
+            required
+          />
+          <label for="final-weight">Final Weight (Tonnes):</label>
+          <input
+            type="number"
+            step="0.01"
+            id="final-weight"
+            name="finalWeight"
+            required
+          />
+          <p id="log-entry-error" class="error-message"></p>
+          <div class="loading-spinner" id="log-entry-spinner"></div>
+          <button type="submit" id="log-entry-button">Generate Receipt</button>
+        </form>
+      </div>
+
+      <!-- Receipt Display Section -->
+      <div id="receipt" style="display: none">
+        <h2>Transaction Receipt</h2>
+        <div id="receipt-content"></div>
+      </div>
+
+      <!-- Past Transactions Section -->
+      <div id="past-records">
+        <h2>Past Transactions</h2>
+        <div class="filter-container">
+          <label for="transaction-filter-field">Filter By:</label>
+          <select id="transaction-filter-field">
+            <option value="transaction_id">Transaction ID</option>
+            <option value="truck_number">Truck No.</option>
+            <option value="driver_name">Driver Name</option>
+            <option value="driver_name">Driver Name</option>
+            <!-- Add Date later if needed -->
+          </select>
+          <label for="transaction-filter-value">Value:</label>
+          <input
+            type="text"
+            id="transaction-filter-value"
+            placeholder="Enter filter value..."
+          />
+        </div>
+        <table id="records-table">
+          <thead>
+            <tr>
+              <th>Date/Time</th>
+              <th>ID</th>
+              <th>Truck No.</th>
+              <th>Driver</th>
+              <th>Sand (T)</th>
+              <th>Bill (INR)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="records-body"></tbody>
+        </table>
+        <button id="export-csv-button">Export All as CSV</button>
+      </div>
+
+      <!-- Rate Management Section (Master Only) -->
+      <div id="rate-management" style="display: none">
+        <h2>Rate Management</h2>
+        <div class="form-container">
+          <p>
+            Current Rate:
+            <strong id="current-rate-display">Loading...</strong> INR/Tonne
+          </p>
+          <form id="rate-update-form">
+            <label for="new-rate">Set New Rate (INR/Tonne):</label>
+            <input
+              type="number"
+              step="0.01"
+              id="new-rate"
+              name="newRate"
+              required
+            />
+            <p id="rate-update-error" class="error-message"></p>
+            <div class="loading-spinner" id="rate-update-spinner"></div>
+            <button type="submit" id="rate-update-button">Update Rate</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- User Management Section (Master Only) -->
+      <div id="user-management" style="display: none">
+        <h2>User Management</h2>
+        <div class="form-container" id="add-user-section">
+          <h3>Add New Driver</h3>
+          <form id="add-user-form">
+            <label for="add-username">Username:</label>
+            <input type="text" id="add-username" name="username" required />
+            <label for="add-password">Password:</label>
+            <input type="password" id="add-password" name="password" required />
+            <!-- Optional fields for master adding user -->
+            <label for="add-fullname">Full Name (Optional):</label>
+            <input type="text" id="add-fullname" name="fullName" />
+            <label for="add-contact">Contact Number (Optional):</label>
+            <input type="text" id="add-contact" name="contactNumber" />
+            <p id="add-user-error" class="error-message"></p>
+            <div class="loading-spinner" id="add-user-spinner"></div>
+            <button type="submit" id="add-user-button">Add Driver</button>
+          </form>
+        </div>
+        <div id="user-list-section">
+          <h3>Existing Drivers</h3>
+          <div class="filter-container">
+            <label for="user-filter-field">Filter By:</label>
+            <select id="user-filter-field">
+              <!-- Removed "All Fields" option -->
+              <option value="username">Username</option>
+              <option value="full_name">Full Name</option>
+              <option value="contact_number">Contact</option>
+            </select>
+            <label for="user-filter-value">Value:</label>
+            <input
+              type="text"
+              id="user-filter-value"
+              placeholder="Enter filter value..."
+            />
+          </div>
+          <table id="users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Contact</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="users-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Confirmation Modal Structure -->
+      <div id="confirmation-modal" class="modal" style="display: none">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <h4 id="modal-title">Confirm Action</h4>
+          <p id="modal-message">Are you sure?</p>
+          <div class="modal-actions">
+            <button id="modal-confirm-button" class="button-danger">
+              Confirm
+            </button>
+            <button id="modal-cancel-button">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <!-- End Confirmation Modal -->
+
+      <!-- Input Modal Structure -->
+      <div id="input-modal" class="modal" style="display: none">
+        <div class="modal-backdrop"></div>
+        <div class="modal-content">
+          <h4 id="input-modal-title">Enter Value</h4>
+          <p id="input-modal-message">Please enter the required value:</p>
+          <input type="text" id="input-modal-field" class="modal-input" />
+          <p
+            id="input-modal-error"
+            class="error-message"
+            style="display: none"
+          ></p>
+          <!-- For validation -->
+          <div class="modal-actions">
+            <button id="input-modal-confirm-button">OK</button>
+            <button id="input-modal-cancel-button">Cancel</button>
+          </div>
+        </div>
+      </div>
+      <!-- End Input Modal -->
+    </div>
+
+    <!-- Load main application script as a module -->
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
