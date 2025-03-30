@@ -92,7 +92,7 @@ Follow these steps to set up and run the project locally:
 2.  **Clone the Repository:** Open your terminal or command prompt and clone the project repository from GitHub.
 
     ```bash
-    git clone <repository_url> # Replace <repository_url> with the actual URL from GitHub
+    git clone https://github.com/apatel2582/AmbikaTruckingLogger.git
     ```
 
 3.  **Navigate to Project Directory:** Change into the newly cloned project folder.
