@@ -86,7 +86,8 @@ export async function handleNewEntry(event) {
     const result = await api.addTransaction(entryData);
     console.log("Transaction saved:", result);
     ui.showNotification(result.message, "success");
-    ui.displayAndPrintRecord(entryData, timestamp, currentSandRate); // Use UI function
+    // Update argument order for displayAndPrintRecord
+    ui.displayAndPrintRecord(entryData, currentSandRate, timestamp); // Use UI function
     if (ui.entryFormEl) ui.entryFormEl.reset();
     loadPastRecords(); // Refresh the list
   } catch (error) {
@@ -173,7 +174,8 @@ function handlePrintButtonClick(event) {
   const recordToPrint = recordsMap.get(txnId);
   if (recordToPrint) {
     // Pass the rate that was likely used (or current as fallback)
-    ui.displayAndPrintRecord(recordToPrint, null, currentSandRate || 2000);
+    // Update argument order for displayAndPrintRecord (timestampObj is null here)
+    ui.displayAndPrintRecord(recordToPrint, currentSandRate || 2000, null);
   } else {
     console.error("Could not find record data for ID:", txnId);
     ui.showNotification(
@@ -187,7 +189,8 @@ function handlePrintButtonClick(event) {
  * Triggers the CSV export by navigating the browser.
  */
 export function exportCSV() {
-  if (!currentUser || !currentUser.isMaster) {
+  // Use optional chaining ?. to check if currentUser exists and then if isMaster is true
+  if (!currentUser?.isMaster) {
     ui.showNotification("Only the master user can export CSV.", "error");
     return;
   }

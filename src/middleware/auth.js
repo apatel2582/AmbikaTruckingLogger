@@ -1,6 +1,7 @@
 // Middleware to check if user is logged in
 const requireLogin = (req, res, next) => {
-  if (!req.session || !req.session.user) {
+  // Use optional chaining
+  if (!req.session?.user) {
     // Check session and user existence
     console.log("Auth Middleware: Authentication required for:", req.path);
     // Redirect to login page for browser requests, send JSON for API requests
@@ -17,7 +18,8 @@ const requireLogin = (req, res, next) => {
 
 // Middleware to check if user is master
 const requireMaster = (req, res, next) => {
-  if (!req.session || !req.session.user || !req.session.user.isMaster) {
+  // Use optional chaining
+  if (!req.session?.user?.isMaster) {
     console.log("Auth Middleware: Master access required for:", req.path);
     // Redirect or send error based on request type
     if (req.accepts("html", "json") === "html") {

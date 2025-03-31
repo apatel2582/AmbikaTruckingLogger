@@ -46,7 +46,8 @@ export async function handleRateUpdate(event) {
   const form = event.target;
   const formId = form.id; // e.g., "rate-update-form"
 
-  if (!currentUser || !currentUser.isMaster) {
+  // Use optional chaining
+  if (!currentUser?.isMaster) {
     ui.showNotification("Only the master user can update the rate.", "error");
     return;
   }

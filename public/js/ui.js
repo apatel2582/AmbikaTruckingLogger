@@ -179,45 +179,54 @@ export function showNotification(message, type = "info", persistent = false) {
         }, 500); // Match fade duration
       };
     }
-  } else {
+  } else if (appendedCloseButton) {
     // For persistent notifications, the close button just removes directly
-    if (appendedCloseButton) {
-      appendedCloseButton.onclick = () => {
-        if (notification.parentNode) {
-          notification.remove();
-        }
-        // No timeout to clear for persistent notifications
-      };
-    }
+    appendedCloseButton.onclick = () => {
+      if (notification.parentNode) {
+        notification.remove();
+      }
+      // No timeout to clear for persistent notifications
+    };
   }
 }
 
 /**
- * Toggles the visibility of a loading spinner for a form.
- * TODO: Implement actual spinner logic.
- * @param {string} formId - The ID of the form associated with the spinner.
- * @param {boolean} isLoading - Whether to show or hide the spinner.
+ * Toggles the visibility of the global loading overlay and disables/enables form submit buttons.
+ * @param {string | null} formId - The ID of the form being processed (to disable its button), or null if no specific form.
+ * @param {boolean} isLoading - Whether to show the overlay and disable buttons.
  */
 export function toggleFormLoading(formId, isLoading) {
-  // Placeholder for spinner logic (e.g., find spinner element by convention)
-  const spinner = document.getElementById(`${formId}-spinner`); // Assuming spinner ID convention
-  const button = document.querySelector(`#${formId} button[type="submit"]`);
-  if (spinner) {
-    spinner.style.display = isLoading ? "block" : "none";
+  const overlay = document.getElementById("loading-overlay");
+  if (overlay) {
+    overlay.classList.toggle("hidden", !isLoading); // Show overlay if isLoading is true
   }
-  if (button) {
-    button.disabled = isLoading;
+
+  // Disable/enable the specific form's submit button if formId is provided
+  if (formId) {
+    const button = document.querySelector(`#${formId} button[type="submit"]`);
+    if (button) {
+      button.disabled = isLoading;
+    }
+  } else {
+    // Optionally disable *all* submit buttons if no specific formId is given?
+    // Or handle this case based on specific needs. For now, only disable specific button.
   }
-  console.log(`Toggling loading for ${formId}: ${isLoading}`);
+
+  console.log(
+    `Toggling global loading overlay: ${isLoading}` +
+      (formId ? ` for form ${formId}` : "")
+  );
 }
 
 /**
  * Displays the generated receipt and triggers printing.
  * @param {object} record - The transaction record data.
- * @param {Date | null} timestampObj - The timestamp object (if available, otherwise parsed from record).
+ * @param {object} record - The transaction record data.
  * @param {number} rateUsed - The sand rate used for calculation.
+ * @param {Date | null} [timestampObj=null] - The timestamp object (if available, otherwise parsed from record).
  */
-export function displayAndPrintRecord(record, timestampObj = null, rateUsed) {
+export function displayAndPrintRecord(record, rateUsed, timestampObj = null) {
+  // Reordered parameters
   console.log(
     "Formatting record for printing:",
     record,
@@ -289,19 +298,17 @@ export function updateSandRateDisplay(rate) {
  * @param {Array<object>} records - Array of transaction records.
  * @param {Map<string, object>} recordsMap - Map to store records by ID for printing.
  * @param {number | null} currentSandRate - The current sand rate for print button context.
- * @param {string} [filterText=""] - Text to filter the records by.
- * @param {Map<string, object>} recordsMap - Map to store records by ID for printing.
- * @param {number | null} currentSandRate - The current sand rate for print button context.
  * @param {string} [filterField="all"] - The field to filter by ('all', 'transaction_id', etc.).
  * @param {string} [filterValue=""] - The value to filter for.
  */
 export function updateTransactionsTable(
-  records,
-  recordsMap,
-  currentSandRate,
-  filterField = "all",
-  filterValue = ""
+  records, // Non-default
+  recordsMap, // Non-default
+  currentSandRate, // Non-default
+  filterField = "all", // Default
+  filterValue = "" // Default
 ) {
+  // No change needed - order is already correct (non-defaults first)
   if (!recordsBodyEl) return;
   recordsBodyEl.innerHTML = ""; // Clear existing rows
 
@@ -374,7 +381,12 @@ export function updateTransactionsTable(
  * @param {string} [filterField="all"] - The field to filter by ('all', 'username', etc.).
  * @param {string} [filterValue=""] - The value to filter for.
  */
-export function updateUsersTable(users, filterField = "all", filterValue = "") {
+export function updateUsersTable(
+  users, // Non-default
+  filterField = "all", // Default
+  filterValue = "" // Default
+) {
+  // Parameter order is correct here too.
   if (!usersTableBodyEl) return;
   usersTableBodyEl.innerHTML = ""; // Clear existing rows
 
@@ -475,32 +487,32 @@ export function showConfirmationModal(message, title = "Confirm Action") {
       newConfirmButton,
       modalConfirmButtonEl
     );
-    modalConfirmButtonEl = newConfirmButton; // Update reference
+    // REMOVED: modalConfirmButtonEl = newConfirmButton;
 
     const newCancelButton = modalCancelButtonEl.cloneNode(true);
     modalCancelButtonEl.parentNode.replaceChild(
       newCancelButton,
       modalCancelButtonEl
     );
-    modalCancelButtonEl = newCancelButton; // Update reference
+    // REMOVED: modalCancelButtonEl = newCancelButton;
 
     const newBackdrop = modalBackdropEl.cloneNode(true);
     modalBackdropEl.parentNode.replaceChild(newBackdrop, modalBackdropEl);
-    modalBackdropEl = newBackdrop; // Update reference
+    // REMOVED: modalBackdropEl = newBackdrop;
 
     // Function to close modal and resolve promise
     const closeModal = (result) => {
-      confirmationModalEl.style.display = "none";
+      confirmationModalEl?.classList.add("hidden"); // Hide using class
       resolve(result);
     };
 
-    // Add event listeners
-    modalConfirmButtonEl.onclick = () => closeModal(true);
-    modalCancelButtonEl.onclick = () => closeModal(false);
-    modalBackdropEl.onclick = () => closeModal(false); // Close on backdrop click
+    // Add event listeners to the *new* elements
+    newConfirmButton.onclick = () => closeModal(true);
+    newCancelButton.onclick = () => closeModal(false);
+    newBackdrop.onclick = () => closeModal(false); // Close on backdrop click
 
     // Show the modal
-    confirmationModalEl.style.display = "block";
+    confirmationModalEl?.classList.remove("hidden"); // Show using class
   });
 }
 
@@ -539,6 +551,7 @@ export function showInputModal(
         // Cancelled
         resolve(null);
       } else if (validator) {
+        // Use else if
         const error = validator(value);
         if (error) {
           alert(`Invalid input: ${error}`);
@@ -547,7 +560,8 @@ export function showInputModal(
           resolve(value);
         }
       } else {
-        resolve(value); // No validator
+        // No validator
+        resolve(value);
       }
       return;
     }
@@ -558,7 +572,7 @@ export function showInputModal(
     inputModalFieldEl.type = inputType;
     inputModalFieldEl.value = ""; // Clear previous input
     inputModalErrorEl.textContent = ""; // Clear previous errors
-    inputModalErrorEl.style.display = "none";
+    inputModalErrorEl?.classList.add("hidden"); // Hide error using class
     inputModalFieldEl.classList.remove("input-error"); // Ensure error style is removed
 
     // Ensure buttons are clean before adding listeners
@@ -576,23 +590,26 @@ export function showInputModal(
       newConfirmButton,
       currentConfirmButton
     );
+    // REMOVED reassignment
 
     const newCancelButton = currentCancelButton.cloneNode(true);
     currentCancelButton.parentNode.replaceChild(
       newCancelButton,
       currentCancelButton
     );
+    // REMOVED reassignment
 
     const newBackdrop = currentBackdrop.cloneNode(true);
     currentBackdrop.parentNode.replaceChild(newBackdrop, currentBackdrop);
+    // REMOVED reassignment
 
     // Function to close modal and resolve promise
     const closeModal = (value) => {
-      inputModalEl.style.display = "none";
+      inputModalEl?.classList.add("hidden"); // Hide using class
       resolve(value);
     };
 
-    // Add event listeners to the *new* buttons
+    // Add event listeners to the *new* buttons and backdrop
     newConfirmButton.onclick = () => {
       const value = inputModalFieldEl.value;
       let error = null;
@@ -611,19 +628,20 @@ export function showInputModal(
         closeModal(value);
       }
     };
+    // Attach listeners to the *new* cancel button and backdrop
     newCancelButton.onclick = () => closeModal(null);
     newBackdrop.onclick = () => closeModal(null); // Close on backdrop click
 
-    // Also allow Enter key to confirm
+    // Also allow Enter key to confirm (using the new button reference)
     inputModalFieldEl.onkeydown = (e) => {
       if (e.key === "Enter") {
         e.preventDefault(); // Prevent potential form submission if wrapped in form
-        newConfirmButton.click(); // Trigger confirm button click
+        newConfirmButton.click(); // Trigger click on the *new* confirm button
       }
     };
 
     // Show the modal and focus the input
-    inputModalEl.style.display = "block";
+    inputModalEl?.classList.remove("hidden"); // Show using class
     inputModalFieldEl.focus();
   });
 }

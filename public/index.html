@@ -8,11 +8,8 @@
   </head>
   <body>
     <!-- Notification Area for Login Page -->
-    <div
-      id="login-notification-area"
-      class="notification-container"
-      style="position: absolute; top: 10px; right: 10px"
-    ></div>
+    <div id="login-notification-area" class="notification-container"></div>
+    <!-- Removed inline style -->
 
     <div class="container">
       <h1>Ambika Trucking Logger</h1>
@@ -37,9 +34,11 @@
         </p>
       </div>
 
-      <div class="form-container" id="register-form" style="display: none">
+      <div class="form-container hidden" id="register-form">
+        <!-- Added hidden class -->
         <h2>Register</h2>
-        <form action="/register" method="POST">
+        <form id="register-actual-form">
+          <!-- Changed ID and removed action/method for consistency -->
           <!-- Will be handled by backend later -->
           <label for="register-username">Username:</label>
           <input type="text" id="register-username" name="username" required />
@@ -50,10 +49,16 @@
             name="password"
             required
           />
-          <!-- Add more fields if needed, e.g., Driver Name -->
+          <!-- Add optional fields -->
+          <label for="register-fullname">Full Name (Optional):</label>
+          <input type="text" id="register-fullname" name="fullName" />
+          <label for="register-contact">Contact Number (Optional):</label>
+          <input type="text" id="register-contact" name="contactNumber" />
+
           <p id="register-error" class="error-message"></p>
           <!-- Error message placeholder -->
-          <div class="loading-spinner" id="register-spinner"></div>
+          <div class="loading-spinner" id="register-actual-form-spinner"></div>
+          <!-- Adjusted spinner ID -->
           <!-- Loading Spinner -->
           <button type="submit" id="register-button">Register</button>
         </form>
@@ -65,5 +70,11 @@
 
     <!-- Load main application script as a module -->
     <script type="module" src="js/app.js"></script>
+
+    <!-- Generic Loading Overlay -->
+    <div id="loading-overlay" class="form-overlay hidden">
+      <div class="loading-spinner"></div>
+      <!-- Spinner is styled in CSS -->
+    </div>
   </body>
 </html>

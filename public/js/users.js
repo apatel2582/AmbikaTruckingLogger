@@ -179,8 +179,9 @@ export async function handleUsernameChange(event) {
  * Loads the list of users (excluding master) and populates the table.
  */
 export async function loadUsers() {
-  if (!ui.usersTableBodyEl || !currentUser || !currentUser.isMaster) {
-    return; // Don't run if table doesn't exist or user isn't master
+  // Use optional chaining for currentUser check
+  if (!ui.usersTableBodyEl || !currentUser?.isMaster) {
+    return; // Don't run if table doesn't exist or user isn't master/logged in
   }
   console.log("Loading users for master view...");
   try {
@@ -238,7 +239,8 @@ export async function handleAddUser(event) {
   const form = event.target;
   const formId = form.id; // e.g., "add-user-form"
 
-  if (!currentUser || !currentUser.isMaster) {
+  // Use optional chaining
+  if (!currentUser?.isMaster) {
     ui.showNotification("Only the master user can add drivers.", "error");
     return;
   }
@@ -282,7 +284,8 @@ export async function handleAddUser(event) {
  * @param {Event} event - The button click event.
  */
 export async function handleDeleteUser(event) {
-  if (!currentUser || !currentUser.isMaster) {
+  // Use optional chaining
+  if (!currentUser?.isMaster) {
     ui.showNotification("Only the master user can delete drivers.", "error");
     return;
   }
@@ -325,7 +328,8 @@ export async function handleDeleteUser(event) {
  * @param {Event} event - The button click event.
  */
 export async function handleResetPassword(event) {
-  if (!currentUser || !currentUser.isMaster) {
+  // Use optional chaining
+  if (!currentUser?.isMaster) {
     ui.showNotification("Only the master user can reset passwords.", "error");
     return;
   }
@@ -371,7 +375,8 @@ export async function handleResetPassword(event) {
  * @param {Event} event - The button click event.
  */
 export async function handleChangeUsernameMaster(event) {
-  if (!currentUser || !currentUser.isMaster) {
+  // Use optional chaining
+  if (!currentUser?.isMaster) {
     ui.showNotification("Only the master user can change usernames.", "error");
     return;
   }

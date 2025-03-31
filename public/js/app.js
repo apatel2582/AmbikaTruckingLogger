@@ -10,106 +10,56 @@ import * as users from "./users.js";
 let currentUser = null;
 let currentSandRate = null;
 
-// --- Initialization and Routing ---
+// --- Helper Functions ---
 
 /**
- * Initializes the application based on the current page and user session.
+ * Checks sessionStorage for login/logout messages and displays them persistently.
+ * Clears the message from storage after displaying.
+ * Clears the *other* type of message to prevent showing stale messages.
+ * @param {boolean} isLoggedIn - The current login status determined by initializeApp.
+ * @param {boolean} isLoginPage - Whether the current page is the login page.
  */
-async function initializeApp() {
-  console.log(`Initializing app on page: ${window.location.pathname}`);
-
-  // Check for persistent notifications from sessionStorage first
+function displayPersistentNotifications(isLoggedIn, isLoginPage) {
   const loginNotificationData = sessionStorage.getItem("authNotification");
   const logoutNotificationData = sessionStorage.getItem("logoutNotification");
 
-  // Attempt to get current user session
-  try {
-    const data = await api.getCurrentUser();
-    currentUser = data.user; // Will be null if not logged in or error
-    console.log("initializeApp: User session data retrieved:", currentUser);
-  } catch (error) {
-    currentUser = null; // Ensure currentUser is null on error
-    console.log(
-      `initializeApp: No active session or error checking session: ${error.message}`
-    );
-  }
-
-  // Pass context to modules that need it
-  users.setUserContext(currentUser);
-  settings.setSettingsContext(currentUser);
-  // transactions module gets context updated after rate fetch
-
-  // --- Page Routing Logic ---
-  const isLoginPage =
-    window.location.pathname.endsWith("/") ||
-    window.location.pathname.endsWith("index.html");
-  const isDashboardPage = window.location.pathname.endsWith("dashboard.html");
-
-  console.log(
-    `Routing check: currentUser=${!!currentUser}, isLoginPage=${isLoginPage}, isDashboardPage=${isDashboardPage}`
-  );
-
-  if (currentUser) {
-    // User IS Logged In
-    if (isLoginPage) {
-      console.log("User logged in, redirecting from Login page to Dashboard.");
-      window.location.href = "dashboard.html";
-      return; // Stop further execution on this page
-    } else if (isDashboardPage) {
-      console.log("User logged in and on Dashboard page. Setting up UI.");
-      // Clear any logout message from previous session
-      sessionStorage.removeItem("logoutNotification");
-      // Display login success message if it exists
-      if (loginNotificationData) {
+  if (isLoggedIn && !isLoginPage) {
+    // On Dashboard
+    sessionStorage.removeItem("logoutNotification"); // Clear any old logout message
+    if (loginNotificationData) {
+      try {
         const notification = JSON.parse(loginNotificationData);
-        // Use the persistent flag
         ui.showNotification(notification.message, notification.type, true);
-        // Remove from storage so it doesn't show again on reload
-        sessionStorage.removeItem("authNotification");
+        sessionStorage.removeItem("authNotification"); // Clear after display
+      } catch (e) {
+        console.error("Error parsing login notification data:", e);
+        sessionStorage.removeItem("authNotification"); // Clear corrupted data
       }
-      await setupDashboard(); // Fetch necessary data and configure dashboard UI
+    }
+  } else if (!isLoggedIn && isLoginPage) {
+    // On Login Page
+    sessionStorage.removeItem("authNotification"); // Clear any old login message
+    if (logoutNotificationData) {
+      try {
+        const notification = JSON.parse(logoutNotificationData);
+        ui.showNotification(notification.message, notification.type, true);
+        sessionStorage.removeItem("logoutNotification"); // Clear after display
+      } catch (e) {
+        console.error("Error parsing logout notification data:", e);
+        sessionStorage.removeItem("logoutNotification"); // Clear corrupted data
+      }
     }
   } else {
-    // User is NOT Logged In
-    if (isDashboardPage) {
-      console.log(
-        "User not logged in, redirecting from Dashboard to Login page."
-      );
-      window.location.href = "index.html";
-      return; // Stop further execution on this page
-    } else if (isLoginPage) {
-      console.log(
-        "User not logged in and on Login page. Setting up listeners."
-      );
-      // Clear any login message from previous session
-      sessionStorage.removeItem("authNotification");
-      // Display logout success message if it exists
-      if (logoutNotificationData) {
-        const notification = JSON.parse(logoutNotificationData);
-        // Use the persistent flag
-        ui.showNotification(notification.message, notification.type, true);
-        // Remove from storage so it doesn't show again on reload
-        sessionStorage.removeItem("logoutNotification");
-      }
-      // Only setup login/register listeners
-      setupLoginRegisterListeners();
-    } else {
-      // Unknown page or state, redirect to login
-      console.warn(
-        "User not logged in and not on login page. Redirecting to login."
-      );
-      window.location.href = "index.html";
-      return;
-    }
+    // Clear both if on an unexpected page or state mismatch
+    sessionStorage.removeItem("authNotification");
+    sessionStorage.removeItem("logoutNotification");
   }
-  console.log("App initialization sequence finished.");
 }
 
 /**
- * Sets up the dashboard UI after confirming user is logged in.
+ * Populates static elements on the dashboard based on currentUser.
  */
-async function setupDashboard() {
-  // Populate dashboard elements that depend only on currentUser
+function populateDashboardStatic() {
   if (ui.usernameDisplayEl) {
     ui.usernameDisplayEl.textContent = currentUser.username;
   }
@@ -127,7 +77,17 @@ async function setupDashboard() {
     driverNameInput.value = currentUser.username;
   }
 
-  // Fetch essential dashboard data (sand rate)
+  // Always show profile section, but collapsed by default
+  if (ui.profileSectionDivEl) ui.profileSectionDivEl.style.display = "block";
+  if (ui.profileFormContentEl) ui.profileFormContentEl.style.display = "none"; // Start collapsed
+  if (ui.profileToggleHeadingEl)
+    ui.profileToggleHeadingEl.innerHTML = `My Profile &#9662;`; // Down arrow
+}
+
+/**
+ * Fetches essential data needed for the dashboard (e.g., sand rate).
+ */
+async function fetchDashboardData() {
   try {
     currentSandRate = await settings.fetchAndUpdateSandRate();
     transactions.setTransactionContext(currentUser, currentSandRate); // Pass context now
@@ -137,40 +97,127 @@ async function setupDashboard() {
       error
     );
     ui.showNotification(error.message, "error");
-    // Decide if app is usable without rate, maybe disable entry form?
     transactions.setTransactionContext(currentUser, null); // Indicate rate is unavailable
   }
+}
 
-  // Show/Hide sections based on user role
-  if (currentUser.isMaster) {
-    console.log("Master user detected, showing admin sections.");
-    if (ui.entryFormDivEl) ui.entryFormDivEl.style.display = "none";
-    if (ui.receiptDivEl) ui.receiptDivEl.style.display = "none"; // Hide receipt initially
-    if (ui.exportCsvButtonEl)
-      ui.exportCsvButtonEl.style.display = "inline-block";
-    if (ui.rateManagementDivEl) ui.rateManagementDivEl.style.display = "block";
-    if (ui.userManagementDivEl) ui.userManagementDivEl.style.display = "block";
-    users.loadUsers(); // Load user list for master
-  } else {
-    console.log("Regular user detected, showing driver sections.");
-    if (ui.entryFormDivEl) ui.entryFormDivEl.style.display = "block";
-    if (ui.exportCsvButtonEl) ui.exportCsvButtonEl.style.display = "none";
-    if (ui.receiptDivEl) ui.receiptDivEl.style.display = "none"; // Hide receipt initially
-    if (ui.rateManagementDivEl) ui.rateManagementDivEl.style.display = "none";
-    if (ui.userManagementDivEl) ui.userManagementDivEl.style.display = "none";
+/**
+ * Shows/hides UI sections based on the current user's role (master or driver).
+ */
+function configureRoleSpecificUI() {
+  if (!currentUser) return; // Should not happen if called correctly
+
+  // Use optional chaining and toggle class
+  const toggleHidden = (element, hide) =>
+    element?.classList.toggle("hidden", hide);
+
+  const isMaster = currentUser.isMaster;
+  console.log(
+    isMaster
+      ? "Master user detected, showing admin sections."
+      : "Regular user detected, showing driver sections."
+  );
+
+  toggleHidden(ui.entryFormDivEl, isMaster); // Hide for master
+  toggleHidden(ui.receiptDivEl, true); // Always hide initially
+  toggleHidden(ui.exportCsvButtonEl, !isMaster); // Hide for non-master
+  toggleHidden(ui.rateManagementDivEl, !isMaster); // Hide for non-master
+  toggleHidden(ui.userManagementDivEl, !isMaster); // Hide for non-master
+}
+
+/**
+ * Loads dynamic table data (transactions, users for master).
+ */
+function loadDashboardTables() {
+  transactions.loadPastRecords();
+  // Use optional chaining
+  if (currentUser?.isMaster) {
+    users.loadUsers(); // Load user list only for master
+  }
+}
+
+// --- Initialization and Routing ---
+
+/**
+ * Initializes the application based on the current page and user session.
+ */
+async function initializeApp() {
+  console.log(`Initializing app on page: ${window.location.pathname}`);
+
+  // Attempt to get current user session
+  try {
+    const data = await api.getCurrentUser();
+    currentUser = data.user; // Will be null if not logged in or error
+    console.log("initializeApp: User session data retrieved:", currentUser);
+  } catch (error) {
+    // Error is already logged in api.js if it's unexpected
+    currentUser = null; // Ensure currentUser is null on error
+    // No need to log the expected 401 error here anymore
   }
 
-  // Always show profile section, but collapsed by default
-  if (ui.profileSectionDivEl) ui.profileSectionDivEl.style.display = "block";
-  if (ui.profileFormContentEl) ui.profileFormContentEl.style.display = "none"; // Start collapsed
-  if (ui.profileToggleHeadingEl)
-    ui.profileToggleHeadingEl.innerHTML = `My Profile &#9662;`; // Down arrow
+  // Pass context to modules that need it (before routing potentially redirects)
+  users.setUserContext(currentUser);
+  settings.setSettingsContext(currentUser);
+  // transactions module gets context updated after rate fetch in setupDashboard
 
-  // Load transaction records
-  transactions.loadPastRecords();
+  // --- Page Routing Logic ---
+  const isLoginPage =
+    window.location.pathname.endsWith("/") ||
+    window.location.pathname.endsWith("index.html");
+  const isDashboardPage = window.location.pathname.endsWith("dashboard.html");
 
-  // Setup ALL dashboard event listeners
-  setupDashboardListeners();
+  console.log(
+    `Routing check: currentUser=${!!currentUser}, isLoginPage=${isLoginPage}, isDashboardPage=${isDashboardPage}`
+  );
+
+  // Display persistent notifications *after* determining login status and page
+  displayPersistentNotifications(!!currentUser, isLoginPage);
+
+  if (currentUser) {
+    // User IS Logged In
+    if (isLoginPage) {
+      console.log("User logged in, redirecting from Login page to Dashboard.");
+      window.location.href = "dashboard.html";
+      return; // Stop further execution on this page
+    } else if (isDashboardPage) {
+      console.log("User logged in and on Dashboard page. Setting up UI.");
+      await setupDashboard(); // Setup dashboard UI and fetch data
+    }
+    // No need for outer else here, conditions cover all cases
+  } else if (isDashboardPage) {
+    // User is NOT Logged In and on Dashboard
+    console.log(
+      "User not logged in, redirecting from Dashboard to Login page."
+    );
+    window.location.href = "index.html";
+    return; // Stop further execution on this page
+  } else if (isLoginPage) {
+    // User is NOT Logged In and on Login Page
+    console.log("User not logged in and on Login page. Setting up listeners.");
+    // Only setup login/register listeners
+    setupLoginRegisterListeners();
+  } else {
+    // User is NOT Logged In and NOT on Login/Dashboard
+    // Unknown page or state, redirect to login
+    console.warn(
+      "User not logged in and not on login page. Redirecting to login."
+    );
+    window.location.href = "index.html";
+    return;
+  }
+}
+console.log("App initialization sequence finished.");
+
+/**
+ * Sets up the dashboard UI after confirming user is logged in.
+ * Calls helper functions to populate static elements, fetch data, configure roles, load tables, and set listeners.
+ */
+async function setupDashboard() {
+  populateDashboardStatic();
+  await fetchDashboardData(); // Fetch rate, pass context to transactions
+  configureRoleSpecificUI();
+  loadDashboardTables();
+  setupDashboardListeners(); // Setup listeners after UI is configured
   console.log(`Dashboard setup complete for user ${currentUser.username}.`);
 }
 
@@ -192,17 +239,15 @@ function setupLoginRegisterListeners() {
   if (ui.showRegisterLinkEl) {
     ui.showRegisterLinkEl.addEventListener("click", (e) => {
       e.preventDefault();
-      if (ui.loginFormContainer) ui.loginFormContainer.style.display = "none";
-      if (ui.registerFormContainer)
-        ui.registerFormContainer.style.display = "block";
+      ui.loginFormContainer?.classList.add("hidden");
+      ui.registerFormContainer?.classList.remove("hidden");
     });
   }
   if (ui.showLoginLinkEl) {
     ui.showLoginLinkEl.addEventListener("click", (e) => {
       e.preventDefault();
-      if (ui.registerFormContainer)
-        ui.registerFormContainer.style.display = "none";
-      if (ui.loginFormContainer) ui.loginFormContainer.style.display = "block";
+      ui.registerFormContainer?.classList.add("hidden");
+      ui.loginFormContainer?.classList.remove("hidden");
     });
   }
   console.log("Login/Register listeners setup complete.");
@@ -221,13 +266,11 @@ function setupDashboardListeners() {
   // Profile
   if (ui.profileToggleHeadingEl) {
     ui.profileToggleHeadingEl.addEventListener("click", () => {
-      if (ui.profileFormContentEl) {
-        const isHidden = ui.profileFormContentEl.style.display === "none";
-        ui.profileFormContentEl.style.display = isHidden ? "block" : "none";
-        ui.profileToggleHeadingEl.innerHTML = `My Profile ${
-          isHidden ? "&#9652;" : "&#9662;"
-        }`; // Toggle arrow
-      }
+      const isHidden = ui.profileFormContentEl?.classList.toggle("hidden");
+      // Update arrow based on new hidden state (isHidden is true if class was added, false if removed)
+      ui.profileToggleHeadingEl.innerHTML = `My Profile ${
+        isHidden ? "&#9662;" : "&#9652;"
+      }`;
     });
   }
   if (ui.profileUpdateFormEl) {
